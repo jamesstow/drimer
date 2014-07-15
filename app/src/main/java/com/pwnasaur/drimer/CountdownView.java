@@ -7,7 +7,12 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by user on 14/07/14.
@@ -37,7 +42,23 @@ public class CountdownView extends View
 	private boolean _countdownClockwise, _sizesEstablished;
 	private float _currentMarkerPosition = DEFAULT_RING_STARTING_ANGLE;
 
+	private GestureDetector _gestureDetector;
+
+	private List<OnClickListener> _pauseListeners = new ArrayList<OnClickListener>();
+	private List<OnClickListener> _restartListeners = new ArrayList<OnClickListener>();
+	private List<OnClickListener> _startListeners = new ArrayList<OnClickListener>();
+	private List<OnClickListener> _stopListeners = new ArrayList<OnClickListener>();
+
 	private void init(){
+		this._gestureDetector = new GestureDetector(CountdownView.this.getContext(),
+			new GestureDetector.SimpleOnGestureListener(){
+				@Override
+				public boolean onDown(MotionEvent e) {
+					return true;
+				}
+			}
+		);
+
 		this._ringElapsedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		this._ringElapsedPaint.setStyle(Paint.Style.STROKE);
 		this._ringElapsedPaint.setColor(this._ringElapsedColour);
@@ -59,6 +80,10 @@ public class CountdownView extends View
 	private  float degreesToRadians(float degrees){
 		// 2 pi == 360
 		return (degrees / 360f) * 2f * (float)Math.PI;
+	}
+
+	public void addOnStartListener(OnClickListener listener){
+		this._startListeners.add(listener);
 	}
 
 	public CountdownView(Context context, AttributeSet attrs){
@@ -86,8 +111,33 @@ public class CountdownView extends View
 	}
 
 	public void setMarkerPosition(float angle){
-		this._currentMarkerPosition = angle;
+		this._currentMarkerPosition = angle + CountdownView.DEFAULT_RING_STARTING_ANGLE;
 		this.syncUI();
+	}
+
+	private void handleClick(float x, float y){
+		if(this._ringRectangle.contains(x, y))
+		{
+			for(OnClickListener listener : this._startListeners){
+				listener.onClick(this);
+			}
+		}
+	}
+
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		boolean result = this._gestureDetector.onTouchEvent(event);
+		if (!result) {
+			if (event.getAction() == MotionEvent.ACTION_UP) {
+				float touchX = event.getX();
+				float touchY = event.getY();
+				handleClick(touchX,touchY);
+
+				result = true;
+			}
+		}
+
+		return result;
 	}
 
 	@Override
@@ -150,8 +200,8 @@ public class CountdownView extends View
 			// draw the circle
 			float elapsedStart = CountdownView.DEFAULT_RING_STARTING_ANGLE;
 			float elapsedEnd = CountdownView.DEFAULT_RING_STARTING_ANGLE - this._currentMarkerPosition;
-			float inactiveStart = elapsedEnd;
-			float inactiveEnd = CountdownView.DEFAULT_RING_ENDING_ANGLE;
+			float inactiveStart = elapsedEnd % CountdownView.RING_CIRCUMFERENCE;
+			float inactiveEnd = CountdownView.DEFAULT_RING_ENDING_ANGLE % CountdownView.RING_CIRCUMFERENCE;
 
 			canvas.drawArc(this._ringRectangle, elapsedStart, elapsedEnd, false, this._ringElapsedPaint);
 			canvas.drawArc(this._ringRectangle, inactiveStart, inactiveEnd, false, this._ringInactivePaint);

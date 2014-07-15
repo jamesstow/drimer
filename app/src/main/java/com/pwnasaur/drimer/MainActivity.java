@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
 				long tickDiff = ticksToNextDrink - ticksToCurrentTime;
 				float timeToNextDrinkInSeconds = (float)(tickDiff / 1000f);
 
-				float angle = (tickDiff / _config.millisecondsBetweenDrinks) * CountdownView.RING_CIRCUMFERENCE;
+				float angle = ((float)tickDiff / (float)ticksToNextDrink) * CountdownView.RING_CIRCUMFERENCE;
 				_countdownView.setMarkerPosition(angle);
 			}
 		});
@@ -133,8 +133,14 @@ public class MainActivity extends Activity {
 	    this._btnStart = (Button)findViewById(R.id.btnStart);
 
 	    this._countdownView = (CountdownView)findViewById(R.id.countdown);
-
-	    this._countdownView.onStart(countdownView_Start);
+	    this._countdownView.addOnStartListener(new View.OnClickListener()
+	    {
+		    @Override
+		    public void onClick(View view)
+		    {
+			    countdownView_Start(view);
+		    }
+	    });
 
 		this.changeConfig(ConfigLoader.getInstance().getCurrentConfig());
     }
