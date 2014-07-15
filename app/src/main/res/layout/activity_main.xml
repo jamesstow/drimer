@@ -5,11 +5,17 @@
     android:layout_height="match_parent"
     tools:context="com.pwnasaur.drimer.MainActivity"
     tools:ignore="MergeRootFrame" >
+
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:layout_margin="10px">
+        android:layout_margin="10px"
+        android:orientation="vertical">
+        <com.pwnasaur.drimer.CountdownView
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/countdown"
+            android:padding="10px"/>
         <LinearLayout
             android:orientation="horizontal"
             android:id="@+id/ttndContainer"

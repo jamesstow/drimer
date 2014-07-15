@@ -2,8 +2,10 @@
 <resources>
     <declare-styleable name="CountdownView">
         <attr name="ringElaspedColour" format="color"/>
+        <attr name="ringElaspedMarkerColour" format="color"/>
         <attr name="ringInactiveColour" format="color"/>
         <attr name="startingAngle" format="float"/>
         <attr name="ringWidth" format="float"/>
+        <attr name="countdownClockwise" format="boolean"/>
     </declare-styleable>
 </resources>
