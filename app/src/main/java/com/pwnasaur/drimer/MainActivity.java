@@ -30,6 +30,7 @@ import java.util.TimerTask;
 
 public class MainActivity extends Activity {
 	private static final String TAG = "MainActivity";
+	public static Context baseContext;
 
 	private CountdownView _countdownView;
 	private MediaPlayer _repeatPlayer;
@@ -40,10 +41,17 @@ public class MainActivity extends Activity {
 	private GameConfig _config;
 	private long _currentTick;
 	private int _currentDrink;
+	private  boolean _isPaused;
 	private IConfigSource _configSource;
+	private CountdownStatus _status;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+	    if(baseContext == null)
+	    {
+	        baseContext = this.getBaseContext();
+	    }
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -61,6 +69,7 @@ public class MainActivity extends Activity {
 		    public void onClick(View view)
 		    {
 			    // TODO - differentiate between start and pause
+			    _isPaused = !_isPaused;
 			    start();
 		    }
 	    });
@@ -72,10 +81,10 @@ public class MainActivity extends Activity {
 					long ticksToCurrentDrink = _currentDrink * _config.millisecondsBetweenDrinks;
 					long ticksToCurrentTime = _currentTick - ticksToCurrentDrink;
 					long ticksToNextDrink = ticksToCurrentDrink + _config.millisecondsBetweenDrinks;
-					long tickDiff = ticksToNextDrink - ticksToCurrentTime;
+					long tickDiff = _config.millisecondsBetweenDrinks - ticksToCurrentTime;
 
-					CountdownStatus status = new CountdownStatus(tickDiff, _config.millisecondsBetweenDrinks, _config.totalNumberOfDrinks, _currentDrink);
-					_countdownView.updateUiByStatus(status);
+					_status = new CountdownStatus(tickDiff, _config.millisecondsBetweenDrinks, _config.totalNumberOfDrinks, _currentDrink, _isPaused);
+					_countdownView.updateUIWithStatus(_status);
 				}
 	    };
 
@@ -133,13 +142,13 @@ public class MainActivity extends Activity {
 
 	private void changeConfig(GameConfig config){
 		this._config = config;
-		//this.intialiseSound();
+		this.intialiseSound();
 		this._manager.changeGameConfig(config);
 	}
 
 	private void playSound(MediaPlayer player)
 	{
-		//player.start();
+		 //player.start();
 	}
 
     @Override
@@ -215,12 +224,15 @@ public class MainActivity extends Activity {
 		public void onPause(GameManager manager)
 		{
 			Log.d("MainActivity","Pause game");
+			_isPaused = true;
+			_manager.pause();
 		}
 
 		@Override
 		public void onStart(GameManager manager)
 		{
 			Log.d("MainActivity","Start game");
+			_isPaused = false;
 		}
 
 		@Override

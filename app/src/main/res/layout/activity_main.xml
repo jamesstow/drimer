@@ -18,7 +18,10 @@
             android:layout_width="fill_parent"
             android:layout_height="0dp"
             android:id="@+id/countdown"
-            android:padding="40px"
+            android:paddingLeft="10px"
+            android:paddingTop="20px"
+            android:paddingRight="30px"
+            android:paddingBottom="40px"
             android:layout_weight="1"/>
     </LinearLayout>
 </FrameLayout>

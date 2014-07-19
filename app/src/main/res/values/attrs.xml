@@ -7,5 +7,6 @@
         <attr name="startingAngle" format="float"/>
         <attr name="ringWidth" format="float"/>
         <attr name="countdownClockwise" format="boolean"/>
+        <attr name="ringTextColour" format="color"/>
     </declare-styleable>
 </resources>
