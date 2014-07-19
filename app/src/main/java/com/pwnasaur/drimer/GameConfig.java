@@ -9,7 +9,7 @@ public class GameConfig {
 
     public GameConfig(){
         this.totalNumberOfDrinks = 100;
-        this.millisecondsBetweenDrinks = 60 * 1000;
+        this.millisecondsBetweenDrinks = 10 * 1000;
         this.repeatSoundUri = Uri.parse(this.repeatSound);
         this.finalSoundUri = Uri.parse(this.finalSound);
     }

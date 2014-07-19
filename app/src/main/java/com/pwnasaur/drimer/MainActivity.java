@@ -8,6 +8,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -24,71 +26,44 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainActivity extends Activity {
-	private TextView _tvTimeToNextDrink;
-	private TextView _tvDrinksLeft;
-	private TextView _tvDrinksSoFar;
-	private TextView _tvTotalDrinks;
-	private Button _btnStart;
+	private static final String TAG = "MainActivity";
+
 	private CountdownView _countdownView;
+	private CountdownViewManager _viewManager;
 
 	private MediaPlayer _repeatPlayer;
 	private MediaPlayer _finalPlayer;
 
-	private Handler _handler;
+	private Handler _updateHandler = new Handler();
 
 	private long _currentTick;
 	private int _currentDrink;
 
 	private void handleDrink(int drink, GameManager manager){
-
-		Log.d("MainActivity","Drink");
-		this._tvTimeToNextDrink.setText(String.format("%.1f", (float)(this._config.millisecondsBetweenDrinks / 1000)));
-		this._tvDrinksLeft.setText(String.valueOf(this._config.totalNumberOfDrinks - drink));
-		this._tvDrinksSoFar.setText(String.valueOf(drink));
-
+		//Log.d("MainActivity","Drink - " + drink);
+		this._currentDrink = drink;
 		this.playSound(this._repeatPlayer);
 	}
 
-	private Runnable _tickRunnable;
+	private Runnable _updateRunnable;
 
 	private void handleTick(long tick, int drinks, GameManager manager){
 		this._currentDrink = drinks;
 		this._currentTick = tick;
 
-		this._countdownView.post(new Runnable()
-		{
-			@Override
-			public void run()
-			{
-				long ticksToCurrentDrink = _currentDrink * _config.millisecondsBetweenDrinks;
-				long ticksToCurrentTime = _currentTick - ticksToCurrentDrink;
-				long ticksToNextDrink = ticksToCurrentDrink + _config.millisecondsBetweenDrinks;
-				long tickDiff = ticksToNextDrink - ticksToCurrentTime;
-				float timeToNextDrinkInSeconds = (float)(tickDiff / 1000f);
-
-				float angle = ((float)tickDiff / (float)ticksToNextDrink) * CountdownView.RING_CIRCUMFERENCE;
-				_countdownView.setMarkerPosition(angle);
-			}
-		});
-
-		//this._handler.post(this._tickRunnable);
+		this._updateHandler.postDelayed(this._updateRunnable, 0);
 	}
 
 	private void handleFinish(GameManager manager){
-		Log.d("MainActivity","Finish");
+		//Log.d("MainActivity","Finish");
 		this.playSound(this._finalPlayer);
 	}
 
-	private void handlePause(GameManager manager){
-	}
+	private void handlePause(GameManager manager){}
 
-	private void handleStart(GameManager manager){
+	private void handleStart(GameManager manager){}
 
-	}
-
-	private void handleStop(GameManager manager){
-
-	}
+	private void handleStop(GameManager manager){}
 
 	private GameManager _manager;
 	private GameConfig _config;
@@ -99,39 +74,11 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         this.initialise();
-
-        this.updateUIWithConfig();
     }
 
     private void initialise(){
-	    this._handler = new Handler();
-
-	    this._tickRunnable = new Runnable()
-	    {
-		    @Override
-		    public void run()
-		    {
-			    Log.d("MainActivity", "Tick");
-
-			    long ticksToCurrentDrink = _currentDrink * _config.millisecondsBetweenDrinks;
-			    long ticksToCurrentTime = _currentTick - ticksToCurrentDrink;
-			    long ticksToNextDrink = ticksToCurrentDrink + _config.millisecondsBetweenDrinks;
-			    long tickDiff = ticksToNextDrink - ticksToCurrentTime;
-			    float timeToNextDrinkInSeconds = (float)(tickDiff / 1000f);
-
-			    _tvTimeToNextDrink.setText(String.format("%.1f", timeToNextDrinkInSeconds));
-		    }
-	    };
-
 	    this._manager = new GameManager();
-	    this._manager.addListener(this._gameHandler);
-
-	    this._tvTimeToNextDrink = (TextView)findViewById(R.id.tvTimeToNextDrink);
-	    this._tvDrinksLeft = (TextView)findViewById(R.id.tvDrinksLeft);
-	    this._tvDrinksSoFar = (TextView)findViewById(R.id.tvDrinksSoFar);
-	    this._tvTotalDrinks = (TextView)findViewById(R.id.tvTotalDrinks);
-	    this._btnStart = (Button)findViewById(R.id.btnStart);
-
+	    this._manager.setListener(this._gameHandler);
 	    this._countdownView = (CountdownView)findViewById(R.id.countdown);
 	    this._countdownView.addOnStartListener(new View.OnClickListener()
 	    {
@@ -142,12 +89,26 @@ public class MainActivity extends Activity {
 		    }
 	    });
 
+		this._updateHandler = new Handler(Looper.getMainLooper());
+		this._updateRunnable = new Runnable() {
+				public void run()
+				{
+					long ticksToCurrentDrink = _currentDrink * _config.millisecondsBetweenDrinks;
+					long ticksToCurrentTime = _currentTick - ticksToCurrentDrink;
+					long ticksToNextDrink = ticksToCurrentDrink + _config.millisecondsBetweenDrinks;
+					long tickDiff = ticksToNextDrink - ticksToCurrentTime;
+
+					CountdownStatus status = new CountdownStatus(tickDiff, _config.millisecondsBetweenDrinks, _config.totalNumberOfDrinks, _currentDrink);
+					_countdownView.updateUiByStatus(status);
+				}
+	    };
+
+	    this._viewManager = new CountdownViewManager(this._countdownView);
+
 		this.changeConfig(ConfigLoader.getInstance().getCurrentConfig());
     }
 
-	private void changeConfig(GameConfig config){
-		this._config = config;
-
+	private void intialiseSound(){
 		MediaPlayer.OnCompletionListener completionListener = new MediaPlayer.OnCompletionListener(){
 			@Override
 			public void onCompletion(MediaPlayer mediaPlayer) {
@@ -156,11 +117,15 @@ public class MainActivity extends Activity {
 		};
 
 		this._repeatPlayer = MediaPlayer.create(this.getBaseContext(), this._config.repeatSoundUri);
-		//this._repeatPlayer.setOnCompletionListener(completionListener);
+		this._repeatPlayer.setOnCompletionListener(completionListener);
 
 		this._finalPlayer = MediaPlayer.create(this.getBaseContext(), this._config.finalSoundUri);
-		//this._finalPlayer.setOnCompletionListener(completionListener);
+		this._finalPlayer.setOnCompletionListener(completionListener);
+	}
 
+	private void changeConfig(GameConfig config){
+		this._config = config;
+		//this.intialiseSound();
 		this._manager.changeGameConfig(config);
 	}
 
@@ -168,13 +133,6 @@ public class MainActivity extends Activity {
 	{
 		//player.start();
 	}
-
-    private void updateUIWithConfig(){
-        this._tvTimeToNextDrink.setText(String.format("%.2f", (float)(this._config.millisecondsBetweenDrinks / 1000)));
-        this._tvDrinksLeft.setText(String.valueOf(this._config.totalNumberOfDrinks));
-        this._tvDrinksSoFar.setText("0");
-        this._tvTotalDrinks.setText(String.valueOf(this._config.totalNumberOfDrinks));
-    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -199,8 +157,15 @@ public class MainActivity extends Activity {
 	public void countdownView_Start(View view){
 		this.btnStart_Click(view);
 	}
+
     public void btnStart_Click(View view){
-        this._manager.start();
+	    try
+	    {
+		    this._manager.start();
+	    }
+	    catch (Exception ex){
+		    Log.d(TAG,"Cannot start game manager", ex);
+	    }
     }
 
 	private final IGameHandler _gameHandler = new IGameHandler()

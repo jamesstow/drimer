@@ -2,6 +2,7 @@ package com.pwnasaur.drimer;
 
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.util.Log;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -11,8 +12,10 @@ import java.util.Set;
  */
 public class GameManager
 {
-	private final Set<IGameHandler> _listeners;
-	private CountDownTimer _timer;
+	private static final String TAG = "GameManager";
+
+	private IGameHandler _listener;
+	//private CountDownTimer _timer;
 	private GameConfig _currentConfig;
 	private int _drinksRemaining;
 	private long _currentTick;
@@ -21,24 +24,68 @@ public class GameManager
 	private int _tickUpdateRate;
 	private boolean _isPaused = false;
 	private boolean _isRunning = false;
+	private Runnable _stopwatchRunnable;
+	private Handler _stopwatchHandler = new Handler();
 
 	public GameManager()
 	{
-		this(100);
+		this(10);
 	}
 
 	public GameManager(int tickUpdateRate)
 	{
-		this._listeners = new LinkedHashSet<IGameHandler>();
 		this._tickUpdateRate = tickUpdateRate;
+	}
+
+	private void checkListener() throws Exception{
+		if(this._listener == null){
+			throw new Exception("No listener defined!");
+		}
 	}
 
 	private void initialiseTimer()
 	{
+		this._startingTick = System.currentTimeMillis();
+		this._stopwatchRunnable = new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				_currentTick = System.currentTimeMillis() - _startingTick;
+				long updateMod = _currentTick % _tickUpdateRate;
+				boolean recur = true;
+
+				if (_currentTick != 0 && updateMod == 0)
+				{
+					notifyTick();
+				}
+
+				int estimatedDrink = (int)(_currentTick / (int)_currentConfig.millisecondsBetweenDrinks);
+				if (estimatedDrink != _currentDrink)
+				{
+					if (estimatedDrink != _currentConfig.totalNumberOfDrinks)
+					{
+						_currentDrink = estimatedDrink;
+						notifyDrink();
+					}
+					else
+					{
+						recur = false;
+						notifyFinish();
+					}
+				}
+
+				if(recur)
+				{
+					_stopwatchHandler.postDelayed(this, 0);
+				}
+			}
+		};
+
 		long totalMilliseconds = this._currentConfig.totalNumberOfDrinks * this._currentConfig.millisecondsBetweenDrinks;
 		totalMilliseconds -= this._currentTick;
 
-		this._timer = new CountDownTimer(totalMilliseconds, 1)
+		/*this._timer = new CountDownTimer(totalMilliseconds, 1)
 		{
 			@Override
 			public void onTick(long l)
@@ -49,9 +96,9 @@ public class GameManager
 			@Override
 			public void onFinish()
 			{
-				finish();
+				notifyFinish();
 			}
-		};
+		};*/
 	}
 
 	private void timer_tick(long l)
@@ -62,55 +109,45 @@ public class GameManager
 		}
 
 		this._currentTick = this._startingTick - l;
-		if (this._currentTick % this._tickUpdateRate == 0)
+		long updateMod = this._currentTick % this._tickUpdateRate;
+
+		if (this._currentTick != 0 && updateMod == 0)
 		{
-			this.tick();
-			if (this._currentTick != 0 && this._currentTick % this._currentConfig.millisecondsBetweenDrinks == 0)
-			{
-				this._currentDrink = (int) this._currentTick / (int) this._currentConfig.millisecondsBetweenDrinks;
-				this.drink();
-			}
+			this.notifyTick();
+
+		}
+
+		long mod = this._currentTick % this._currentConfig.millisecondsBetweenDrinks;
+		if (mod == 0)
+		{
+			this._currentDrink = (int) this._currentTick / (int) this._currentConfig.millisecondsBetweenDrinks;
+			this.notifyDrink();
 		}
 	}
 
-	private void finish()
+	private void notifyFinish()
 	{
-		for (IGameHandler listener : this._listeners)
-		{
-			listener.onFinish(this);
-		}
+		Log.d(TAG,"Finish!");
+		this._listener.onFinish(this);
 	}
 
-	private void tick()
+	private void notifyTick()
 	{
-		for (IGameHandler listener : this._listeners)
-		{
-			listener.onTick(this._currentTick,this._currentDrink, this);
-		}
+		Log.d(TAG,"Tick: " + this._currentTick);
+		this._listener.onTick(this._currentTick,this._currentDrink, this);
 	}
 
-	private void drink()
+	private void notifyDrink()
 	{
-		/*if (this._drinksRemaining == 0)
-		{
-			this.finish();
-		} else
-		{*/
-		for (IGameHandler listener : this._listeners)
-		{
-			listener.onDrink(this._currentDrink, this);
-		}
-		//}
+		Log.d(TAG,"Drink: " + this._currentDrink);
+		this._listener.onDrink(this._currentDrink, this);
 	}
 
-	public void addListener(IGameHandler listener)
-	{
-		this._listeners.add(listener);
-	}
+	public void setListener(IGameHandler listener)	{		this._listener = listener;	}
 
-	public void removeListener(IGameHandler listener)
+	public void removeListener()
 	{
-		this._listeners.remove(listener);
+		this._listener = null;
 	}
 
 	public void changeGameConfig(GameConfig config)
@@ -125,8 +162,9 @@ public class GameManager
 		this.initialiseTimer();
 	}
 
-	public void start()
+	public void start() throws Exception
 	{
+		this.checkListener();
 		if (!this._isRunning)
 		{
 			initialiseTimer();
@@ -134,12 +172,9 @@ public class GameManager
 			this._isPaused = false;
 			this._isRunning = true;
 
-			this._timer.start();
+			this._stopwatchHandler.postDelayed(this._stopwatchRunnable, 0);
 
-			for (IGameHandler listener : this._listeners)
-			{
-				listener.onStart(this);
-			}
+			this._listener.onStart(this);
 		}
 	}
 
@@ -147,15 +182,9 @@ public class GameManager
 	{
 		if (this._isRunning)
 		{
-			if (this._timer != null)
-			{
-				this._timer.cancel();
-			}
+			this._stopwatchHandler.removeCallbacks(this._stopwatchRunnable);
 
-			for (IGameHandler listener : this._listeners)
-			{
-				listener.onStop(this);
-			}
+			this._listener.onStop(this);
 		}
 	}
 
@@ -163,17 +192,10 @@ public class GameManager
 	{
 		if (this._isRunning)
 		{
-			if (this._timer != null)
-			{
-				this._timer.cancel();
-			}
+			this._stopwatchHandler.removeCallbacks(this._stopwatchRunnable);
 
 			this._isPaused = true;
-
-			for (IGameHandler listener : this._listeners)
-			{
-				listener.onPause(this);
-			}
+			this._listener.onPause(this);
 		}
 	}
 }
