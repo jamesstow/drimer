@@ -3,6 +3,8 @@ package com.pwnasaur.drimer;
 import android.app.Activity;
 import android.app.ActionBar;
 import android.app.Fragment;
+import android.content.Context;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import android.view.ViewGroup;
 import android.os.Build;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Timer;
@@ -29,44 +32,15 @@ public class MainActivity extends Activity {
 	private static final String TAG = "MainActivity";
 
 	private CountdownView _countdownView;
-	private CountdownViewManager _viewManager;
-
 	private MediaPlayer _repeatPlayer;
 	private MediaPlayer _finalPlayer;
-
 	private Handler _updateHandler = new Handler();
-
-	private long _currentTick;
-	private int _currentDrink;
-
-	private void handleDrink(int drink, GameManager manager){
-		//Log.d("MainActivity","Drink - " + drink);
-		this._currentDrink = drink;
-		this.playSound(this._repeatPlayer);
-	}
-
 	private Runnable _updateRunnable;
-
-	private void handleTick(long tick, int drinks, GameManager manager){
-		this._currentDrink = drinks;
-		this._currentTick = tick;
-
-		this._updateHandler.postDelayed(this._updateRunnable, 0);
-	}
-
-	private void handleFinish(GameManager manager){
-		//Log.d("MainActivity","Finish");
-		this.playSound(this._finalPlayer);
-	}
-
-	private void handlePause(GameManager manager){}
-
-	private void handleStart(GameManager manager){}
-
-	private void handleStop(GameManager manager){}
-
 	private GameManager _manager;
 	private GameConfig _config;
+	private long _currentTick;
+	private int _currentDrink;
+	private IConfigSource _configSource;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,15 +51,17 @@ public class MainActivity extends Activity {
     }
 
     private void initialise(){
+	    this._configSource = new MockConfigSource();
 	    this._manager = new GameManager();
 	    this._manager.setListener(this._gameHandler);
 	    this._countdownView = (CountdownView)findViewById(R.id.countdown);
-	    this._countdownView.addOnStartListener(new View.OnClickListener()
+	    this._countdownView.addRingClickListener(new View.OnClickListener()
 	    {
 		    @Override
 		    public void onClick(View view)
 		    {
-			    countdownView_Start(view);
+			    // TODO - differentiate between start and pause
+			    start();
 		    }
 	    });
 
@@ -103,24 +79,56 @@ public class MainActivity extends Activity {
 				}
 	    };
 
-	    this._viewManager = new CountdownViewManager(this._countdownView);
-
-		this.changeConfig(ConfigLoader.getInstance().getCurrentConfig());
+		this.changeConfig(this._configSource.getCurrent());
     }
 
-	private void intialiseSound(){
+	private void createRepeatPlayer(){
+		MediaPlayer.OnCompletionListener completionListener = new MediaPlayer.OnCompletionListener(){
+			@Override
+			public void onCompletion(MediaPlayer mediaPlayer) {
+				// mediaPlayer.release();
+			}
+		};
+
+		try
+		{
+			this._repeatPlayer = new MediaPlayer();
+			this._repeatPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+			this._repeatPlayer.setDataSource(this.getBaseContext(), this._config.repeatSoundUri);
+			this._repeatPlayer.prepare();
+			this._repeatPlayer.setOnCompletionListener(completionListener);
+		}
+		catch (Exception ex){
+			Log.e(TAG,"Repeat media player initialisation failed", ex);
+		}
+	}
+
+	private void createFinalPlayer(){
 		MediaPlayer.OnCompletionListener completionListener = new MediaPlayer.OnCompletionListener(){
 			@Override
 			public void onCompletion(MediaPlayer mediaPlayer) {
 				mediaPlayer.release();
+				mediaPlayer = null;
 			}
 		};
 
-		this._repeatPlayer = MediaPlayer.create(this.getBaseContext(), this._config.repeatSoundUri);
-		this._repeatPlayer.setOnCompletionListener(completionListener);
+		try
+		{
+			this._finalPlayer = new MediaPlayer();
+			this._finalPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+			this._finalPlayer.setDataSource(this.getBaseContext(), this._config.finalSoundUri);
+			this._finalPlayer.prepare();
 
-		this._finalPlayer = MediaPlayer.create(this.getBaseContext(), this._config.finalSoundUri);
-		this._finalPlayer.setOnCompletionListener(completionListener);
+			this._finalPlayer.setOnCompletionListener(completionListener);
+		}
+		catch (Exception ex){
+			Log.e(TAG,"Final media player initialisation failed", ex);
+		}
+	}
+
+	private void intialiseSound(){
+		createRepeatPlayer();
+		createFinalPlayer();
 	}
 
 	private void changeConfig(GameConfig config){
@@ -154,56 +162,71 @@ public class MainActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-	public void countdownView_Start(View view){
-		this.btnStart_Click(view);
+	private void stop(){
+
 	}
 
-    public void btnStart_Click(View view){
-	    try
-	    {
-		    this._manager.start();
-	    }
-	    catch (Exception ex){
-		    Log.d(TAG,"Cannot start game manager", ex);
-	    }
-    }
+	private void start(){
+		try
+		{
+			this._manager.start();
+		}
+		catch (Exception ex){
+			Log.d(TAG,"Cannot start game manager", ex);
+		}
+	}
+
+	private void pause(){
+
+	}
+
+	private Context getContext(){
+		return  this.getBaseContext();
+	}
 
 	private final IGameHandler _gameHandler = new IGameHandler()
 	{
 		@Override
 		public void onDrink(int drink, GameManager manager)
 		{
-			handleDrink(drink, manager);
+			Log.d("MainActivity","Drink - " + drink);
+			_currentDrink = drink;
+			playSound(_repeatPlayer);
+			Toast.makeText(getContext(),"Drink!",Toast.LENGTH_SHORT).show();
 		}
 
 		@Override
 		public void onTick(long tick,int drinks, GameManager manager)
 		{
-			handleTick(tick, drinks,manager);
+			_currentDrink = drinks;
+			_currentTick = tick;
+
+			_updateHandler.postDelayed(_updateRunnable, 0);
 		}
 
 		@Override
 		public void onFinish(GameManager manager)
 		{
-			handleFinish(manager);
+			Log.d("MainActivity","Finish game");
+			playSound(_finalPlayer);
 		}
 
 		@Override
 		public void onPause(GameManager manager)
 		{
-			handlePause(manager);
+			Log.d("MainActivity","Pause game");
 		}
 
 		@Override
 		public void onStart(GameManager manager)
 		{
-			handleStart(manager);
+			Log.d("MainActivity","Start game");
 		}
 
 		@Override
 		public void onStop(GameManager manager)
 		{
-			handleStop(manager);
+			Log.d("MainActivity","Stop game");
 		}
 	};
 }

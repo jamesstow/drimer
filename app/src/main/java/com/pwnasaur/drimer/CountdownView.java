@@ -40,7 +40,7 @@ public class CountdownView extends View
 
 	// Ting.
 	private Paint _ringElapsedPaint,_ringElapsedMarkerPaint;
-	private int _ringElapsedColour, _ringElapsedMarkerColour;
+	private int _ringElapsedColour, _ringElapsedMarkerColour, _paddingLeft, _paddingTop, _paddingRight, _paddingBottom;
 	private Paint _ringInactivePaint;
 	private int _ringInactiveColour;
 	private float _ringCenterX, _ringCenterY, _ringRadius, _ringMarkerSizeW, _ringThickness, _ringStartingAngle;
@@ -49,10 +49,7 @@ public class CountdownView extends View
 	private float _currentMarkerPosition = 0;
 	private GestureDetector _gestureDetector;
 
-	private List<OnClickListener> _pauseListeners = new ArrayList<OnClickListener>();
-	private List<OnClickListener> _restartListeners = new ArrayList<OnClickListener>();
-	private List<OnClickListener> _startListeners = new ArrayList<OnClickListener>();
-	private List<OnClickListener> _stopListeners = new ArrayList<OnClickListener>();
+	private List<OnClickListener> _ringClickListener = new ArrayList<OnClickListener>();
 
 	private void init(){
 		this._gestureDetector = new GestureDetector(CountdownView.this.getContext(),
@@ -99,21 +96,8 @@ public class CountdownView extends View
 		return angle;
 	}
 
-	public void addOnStartListener(OnClickListener listener){
-		this._startListeners.add(listener);
-	}
-
-	private void prepareAngleCache(){
-		int maxScaledFloatForCache = (int)CountdownView.RING_CIRCUMFERENCE * CountdownView.ANGLE_CACHE_DP_MULTIPLIER;
-		for(int i = 0; i < maxScaledFloatForCache; ++i){
-			float asFloat = (float)i/CountdownView.ANGLE_CACHE_DP_MULTIPLIER;
-			float relativeX = (this._ringRadius - this._ringThickness / 2f) * (float) Math.sin(degreesToRadians(this._currentMarkerPosition));
-			float relativeY = (this._ringRadius - this._ringThickness / 2f) * (float) Math.cos(degreesToRadians(this._currentMarkerPosition));
-
-			float markerX = relativeX + this._ringCenterX;
-			float markerY = relativeY + this._ringCenterY;
-			this._angleCache.put(asFloat, new Tuple<Float, Float>(markerX, markerY));
-		}
+	public void addRingClickListener(OnClickListener listener){
+		this._ringClickListener.add(listener);
 	}
 
 	public CountdownView(Context context, AttributeSet attrs){
@@ -153,7 +137,7 @@ public class CountdownView extends View
 	private void handleClick(float x, float y){
 		if(this._ringRectangle.contains(x, y))
 		{
-			for(OnClickListener listener : this._startListeners){
+			for(OnClickListener listener : this._ringClickListener){
 				listener.onClick(this);
 			}
 		}
@@ -161,31 +145,31 @@ public class CountdownView extends View
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
-		boolean result = this._gestureDetector.onTouchEvent(event);
-		if (!result) {
+		boolean handled = this._gestureDetector.onTouchEvent(event);
+		if (!handled) {
 			if (event.getAction() == MotionEvent.ACTION_UP) {
 				float touchX = event.getX();
 				float touchY = event.getY();
 				handleClick(touchX,touchY);
 
-				result = true;
+				handled = true;
 			}
 		}
 
-		return result;
+		return handled;
 	}
 
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh)
 	{
 		// Account for padding
-		int lp = getPaddingLeft();
-		int rp = getPaddingRight();
-		int tp = getPaddingTop();
-		int bp = getPaddingBottom();
+		this._paddingLeft = getPaddingLeft();
+		this._paddingRight = getPaddingRight();
+		this._paddingTop = getPaddingTop();
+		this._paddingBottom = getPaddingBottom();
 
-		float xpad = (float)(lp + rp);
-		float ypad = (float)(tp + bp);
+		float xpad = (float)(this._paddingLeft + this._paddingRight);
+		float ypad = (float)(this._paddingTop + this._paddingBottom);
 
 		this._sizesEstablished = true;
 		super.onSizeChanged(w, h, oldw, oldh);
@@ -209,10 +193,10 @@ public class CountdownView extends View
 		float halfMarkerSize = maxMarkerSize / 2f;
 
 		float rl,rt,rr,rb; // come back to this - i think it's slightly off
-		rl = lp + halfMarkerSize;
-		rr = smallestDimension - (ypad + halfMarkerSize);
-		rt = tp + (halfMarkerSize);
-		rb = smallestDimension - (xpad + halfMarkerSize);
+		rl = this._paddingLeft + halfMarkerSize;
+		rr = this._paddingLeft + (2 * this._ringRadius) + maxMarkerSize; //smallestDimension - (ypad + halfMarkerSize);
+		rt = this._paddingTop + (halfMarkerSize);
+		rb = this._paddingTop + (2 * this._ringRadius) + maxMarkerSize;//smallestDimension - (xpad + halfMarkerSize);
 
 		// left, top, right, bottom
 		this._ringRectangle= new RectF(rl,rt,rr,rb);
@@ -242,9 +226,6 @@ public class CountdownView extends View
 			float elapsedSweep = normaliseAngle(elapsedEnd - elapsedStart);
 			float inactiveSweep = CountdownView.RING_CIRCUMFERENCE - elapsedSweep - differentialGap;
 
-			float sum = elapsedStart + elapsedEnd + inactiveStart + inactiveEnd;
-			float modded = sum % CountdownView.RING_CIRCUMFERENCE;
-
 			canvas.drawArc(this._ringRectangle, elapsedStart + this._ringStartingAngle, elapsedSweep, false, this._ringElapsedPaint);
 			canvas.drawArc(this._ringRectangle, inactiveStart + this._ringStartingAngle, inactiveSweep, false, this._ringInactivePaint);
 
@@ -253,11 +234,17 @@ public class CountdownView extends View
 			{
 				float markerX, markerY;
 
-				/*Tuple<Float,Float> cachedLocation = this._angleCache.get(this._currentMarkerPosition);
-				markerX = cachedLocation.item1;
-				markerY = cachedLocation.item2;
+				float offsetX = this._paddingLeft + (this._ringMarkerSizeW) + this._ringRadius;//(float)this._ringRadius + (float)this._paddingLeft;// - this._ringMarkerSizeW / 2f;
+				float offsetY = this._paddingTop + (this._ringMarkerSizeW) + this._ringRadius;//(float)this._ringRadius + (float)this._paddingTop;// - this._ringMarkerSizeW / 2f;
 
-				canvas.drawCircle(markerX, markerY, this._ringMarkerSizeW, this._ringElapsedMarkerPaint);*/
+				float angle = this._currentMarkerPosition + this._ringStartingAngle;
+				float hypotenuse = this._ringRadius + (this._ringMarkerSizeW / 2f);
+
+				markerY = ((float)Math.sin(degreesToRadians(angle)) * (hypotenuse)) + offsetY;
+				markerX = ((float)Math.cos(degreesToRadians(angle)) * (hypotenuse)) + offsetX;
+
+				canvas.drawCircle(markerX, markerY, this._ringMarkerSizeW, this._ringElapsedMarkerPaint);
+				canvas.drawCircle(offsetX, offsetY, this._ringMarkerSizeW, this._ringElapsedMarkerPaint);
 			}
 		}
 	}

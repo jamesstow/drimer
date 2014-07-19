@@ -17,8 +17,8 @@ public class GameConfig {
     public String name = "Centurion";
     public int totalNumberOfDrinks;
     public int millisecondsBetweenDrinks;
-    public String repeatSound = "repeat.mp3";
-    public String finalSound = "final.mp3";
+    public String repeatSound = R.raw.repeat;
+    public String finalSound = R.raw.final;
 
     public Uri repeatSoundUri;
     public Uri finalSoundUri;

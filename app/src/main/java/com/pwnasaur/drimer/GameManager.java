@@ -15,7 +15,6 @@ public class GameManager
 	private static final String TAG = "GameManager";
 
 	private IGameHandler _listener;
-	//private CountDownTimer _timer;
 	private GameConfig _currentConfig;
 	private int _drinksRemaining;
 	private long _currentTick;
@@ -81,24 +80,6 @@ public class GameManager
 				}
 			}
 		};
-
-		long totalMilliseconds = this._currentConfig.totalNumberOfDrinks * this._currentConfig.millisecondsBetweenDrinks;
-		totalMilliseconds -= this._currentTick;
-
-		/*this._timer = new CountDownTimer(totalMilliseconds, 1)
-		{
-			@Override
-			public void onTick(long l)
-			{
-				timer_tick(l);
-			}
-
-			@Override
-			public void onFinish()
-			{
-				notifyFinish();
-			}
-		};*/
 	}
 
 	private void timer_tick(long l)
@@ -143,7 +124,7 @@ public class GameManager
 		this._listener.onDrink(this._currentDrink, this);
 	}
 
-	public void setListener(IGameHandler listener)	{		this._listener = listener;	}
+	public void setListener(IGameHandler listener)	{ this._listener = listener; }
 
 	public void removeListener()
 	{
