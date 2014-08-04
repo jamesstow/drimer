@@ -82,30 +82,6 @@ public class GameManager
 		};
 	}
 
-	private void timer_tick(long l)
-	{
-		if (this._startingTick == -1)
-		{
-			this._startingTick = l;
-		}
-
-		this._currentTick = this._startingTick - l;
-		long updateMod = this._currentTick % this._tickUpdateRate;
-
-		if (this._currentTick != 0 && updateMod == 0)
-		{
-			this.notifyTick();
-
-		}
-
-		long mod = this._currentTick % this._currentConfig.millisecondsBetweenDrinks;
-		if (mod == 0)
-		{
-			this._currentDrink = (int) this._currentTick / (int) this._currentConfig.millisecondsBetweenDrinks;
-			this.notifyDrink();
-		}
-	}
-
 	private void notifyFinish()
 	{
 		Log.d(TAG,"Finish!");
@@ -143,9 +119,10 @@ public class GameManager
 		this.initialiseTimer();
 	}
 
-	public void start() throws Exception
+	public void pauseOrStart() throws Exception
 	{
 		this.checkListener();
+
 		if (!this._isRunning)
 		{
 			initialiseTimer();
@@ -156,6 +133,24 @@ public class GameManager
 			this._stopwatchHandler.postDelayed(this._stopwatchRunnable, 0);
 
 			this._listener.onStart(this);
+
+		}
+		else{
+			if(!this._isPaused){
+				this._isPaused = true;
+				this._stopwatchHandler.removeCallbacks(this._stopwatchRunnable);
+				this._listener.onPause(this);
+			}
+			else
+			{
+				this._isPaused = false;
+
+				//this._startingTick = System.currentTimeMillis();
+				_startingTick = System.currentTimeMillis() - _currentTick;
+				this._stopwatchHandler.postDelayed(this._stopwatchRunnable, 0);
+
+				this._listener.onStart(this);
+			}
 		}
 	}
 
@@ -166,17 +161,6 @@ public class GameManager
 			this._stopwatchHandler.removeCallbacks(this._stopwatchRunnable);
 
 			this._listener.onStop(this);
-		}
-	}
-
-	public void pause()
-	{
-		if (this._isRunning)
-		{
-			this._stopwatchHandler.removeCallbacks(this._stopwatchRunnable);
-
-			this._isPaused = true;
-			this._listener.onPause(this);
 		}
 	}
 }

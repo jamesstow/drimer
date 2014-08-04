@@ -11,6 +11,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -37,24 +38,27 @@ public class CountdownView extends View
 	private static final int DEFAULT_RING_ELAPSED_COLOUR = 0xFFFF0000;
 	private static final int DEFAULT_RING_INACTIVE_COLOUR = 0xFF222222;
 	private static final int DEFAULT_RING_TEXT_COLOUR = DEFAULT_RING_INACTIVE_COLOUR;
+	private static final int PAUSED_BLINK_RATE_MILLIS = 1000;
 
 	private static final float DEFAULT_RING_STARTING_ANGLE = 270f; // 0 is at the bottom
 	private static final boolean DEFAULT_DIRECTION_CLOCKWISE = true;
 	private static final float RING_THICKNESS_TO_RADIUS_RATIO = 0.02f; // how thick the ring will be in relation to the circle's radius
 	private static final float RING_MARKER_TO_THICKNESS_RATIO = 2.0f; // how thick the marker will be in relation to the circle's thickness
+	private static final float RING_TEXT_TO_RING_RATIO = (float)(Math.PI / 10f); // how thick the ring will be in relation to the circle's radius
+	private static final float RING_SIZE_TO_BUTTON_RATIO = 0.2f; // how big the delete / restart buttons will be relative to the ring
 
 	// Ting.
 	private Paint _ringElapsedPaint, _ringElapsedMarkerPaint, _ringInactivePaint, _ringTextPaint, _debugPaint;
 	private int _ringElapsedColour, _ringElapsedMarkerColour, _ringInactiveColour, _ringTextColour;
 	private int _paddingLeft, _paddingTop, _paddingRight, _paddingBottom;
 	private float _ringCenterX, _ringCenterY, _ringRadius, _ringMarkerSizeW, _ringThickness, _ringStartingAngle, _height, _width;
-	private RectF _ringRectangle;
-	private boolean _sizesEstablished, _rotateClockwise;
+	private RectF _ringRectangle, _deleteRectangle, _restartRectangle;
+	private Rect _ringTextRectangle;
+	private boolean _sizesEstablished, _rotateClockwise, _drawText;
 	private float _currentMarkerPosition = 0;
 	private GestureDetector _gestureDetector;
 	private CountdownStatus _status;
-
-	private TextView _ringTextView;
+	private TextView _tv = new TextView(this.getContext());
 
 	private List<OnClickListener> _ringClickListener = new ArrayList<OnClickListener>();
 
@@ -91,11 +95,10 @@ public class CountdownView extends View
 		this._ringTextPaint.setStyle(Paint.Style.STROKE);
 		this._ringTextPaint.setColor(this._ringTextColour);
 		this._ringTextPaint.setTextAlign(Paint.Align.CENTER);
-		this._ringTextPaint.setTextSize(50f);
 
 		this._debugPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		this._debugPaint.setStyle(Paint.Style.STROKE);
-		this._debugPaint.setColor(getColour(R.color.Grey_0));
+		this._debugPaint.setColor(getColour(R.color.Grey_1000));
 
 	}
 
@@ -144,8 +147,6 @@ public class CountdownView extends View
 			this._ringTextColour = a.getColor(R.styleable.CountdownView_ringTextColour, CountdownView.DEFAULT_RING_TEXT_COLOUR);
 			this._ringStartingAngle = a.getFloat(R.styleable.CountdownView_startingAngle, CountdownView.DEFAULT_RING_STARTING_ANGLE);
 			this._rotateClockwise = a.getBoolean(R.styleable.CountdownView_countdownClockwise, CountdownView.DEFAULT_DIRECTION_CLOCKWISE);
-
-			this._ringTextView = new TextView(this.getContext());
 		} catch (Exception e)
 		{
 			Log.e(CountdownView.LOG_TAG, "Error setting config", e);
@@ -224,7 +225,6 @@ public class CountdownView extends View
 		float maxRadiusTotal = smallestDimensionLessPadding / 2f;
 		float markerToRadiusRatio = CountdownView.RING_MARKER_TO_THICKNESS_RATIO * CountdownView.RING_THICKNESS_TO_RADIUS_RATIO;
 
-		//this._ringRadius = maxRadiusTotal / (1 + (markerToRadiusRatio)/2f);
 		this._ringRadius = maxRadiusTotal * (1 - markerToRadiusRatio);
 		this._ringMarkerSizeW = (maxRadiusTotal * markerToRadiusRatio);
 		// can implement SizeH here too if we want to be able to draw different markers.
@@ -233,7 +233,7 @@ public class CountdownView extends View
 		float maxMarkerSize = this._ringMarkerSizeW;
 		float halfMarkerSize = maxMarkerSize / 2f;
 
-		float rl, rt, rr, rb; // come back to this - i think it's slightly off
+		float rl, rt, rr, rb;
 		rl = this._paddingLeft + halfMarkerSize + (this._ringThickness / 2f);
 		rr = this._paddingLeft + (2 * this._ringRadius) + maxMarkerSize + (this._ringThickness / 2f);
 		rt = this._paddingTop + (halfMarkerSize) + (this._ringThickness / 2f);
@@ -241,13 +241,20 @@ public class CountdownView extends View
 
 		// left, top, right, bottom
 		this._ringRectangle = new RectF(rl, rt, rr, rb);
+		this._ringTextRectangle = new Rect();
 
-		this._ringCenterX = this._ringRectangle.centerX();//(float)rl + this._ringRectangle.width() / 2f;
-		this._ringCenterY = this._ringRectangle.centerY();//(float)rt + this._ringRectangle.height() / 2f;
+		float controlBoxSize = RING_SIZE_TO_BUTTON_RATIO *  ((2 * this._ringRadius) + maxMarkerSize);
+
+		this._restartRectangle = new RectF(rl, rb - rt + controlBoxSize,rr - rl + controlBoxSize, rl + controlBoxSize);
+		this._deleteRectangle = new RectF(rr - rl + controlBoxSize, rb - rt + controlBoxSize, rr - controlBoxSize, rl + controlBoxSize);
+
+		this._ringCenterX = this._ringRectangle.centerX();
+		this._ringCenterY = this._ringRectangle.centerY();
 
 		this._ringElapsedPaint.setStrokeWidth(this._ringThickness);
 		this._ringInactivePaint.setStrokeWidth(this._ringMarkerSizeW);
-
+		this._ringTextRectangle = new Rect((int)this._ringCenterX, (int)this._ringCenterY, 0, 0);
+		this._ringTextPaint.setTextSize(RING_TEXT_TO_RING_RATIO * this._ringRectangle.height());
 	}
 
 	private void renderCircle(Canvas canvas){
@@ -282,20 +289,34 @@ public class CountdownView extends View
 
 		if(this._status != null){
 			if(this._status.isPaused){
-				text = "Paused";
+				if(System.currentTimeMillis() % CountdownView.PAUSED_BLINK_RATE_MILLIS == 0){
+					this._drawText = !this._drawText;
+				}
 			}
-			else
-			{
-				text = String.format("%.2f", this._status.timeToNextDrink / 1000f);
+			else{
+				this._drawText = true;
 			}
+
+			text = String.format("%.2f", this._status.timeToNextDrink / 1000f);
 		}
 		else{
+			this._drawText = true;
 			text = "Start";
 		}
 
-		this._ringTextPaint.getTextBounds(text,0,text.length(),new Rect((int)this._ringRectangle.left,(int)this._ringRectangle.top,(int)this._ringRectangle.right,(int)this._ringRectangle.bottom));
-		this._ringTextPaint.setTextSize(100);
-		canvas.drawText(text,this._ringCenterX,this._ringCenterY,this._ringTextPaint);
+		if(this._drawText){
+			this._ringTextPaint.getTextBounds(text, 0 ,text.length(),this._ringTextRectangle);
+
+			int xPos = (int)this._ringCenterX ;//(canvas.getWidth() / 2);
+			int yPos = (int) ((this._ringCenterY) - ((this._ringTextPaint.descent() + this._ringTextPaint.ascent()) / 2)) ;
+
+			canvas.drawText(text,0,text.length(),xPos, yPos, this._ringTextPaint);
+		}
+	}
+
+	private void renderButtons(Canvas canvas) {
+		canvas.drawRect(this._deleteRectangle, this._debugPaint);
+		canvas.drawRect(this._restartRectangle, this._debugPaint);
 	}
 
 	@Override
@@ -308,6 +329,7 @@ public class CountdownView extends View
 			renderCircle(canvas);
 			renderMarker(canvas);
 			renderRingText(canvas);
+			renderButtons(canvas);
 		}
 	}
 }

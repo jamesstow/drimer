@@ -68,9 +68,7 @@ public class MainActivity extends Activity {
 		    @Override
 		    public void onClick(View view)
 		    {
-			    // TODO - differentiate between start and pause
-			    _isPaused = !_isPaused;
-			    start();
+				pauseOrStart();
 		    }
 	    });
 
@@ -175,10 +173,10 @@ public class MainActivity extends Activity {
 
 	}
 
-	private void start(){
+	private void pauseOrStart(){
 		try
 		{
-			this._manager.start();
+			this._manager.pauseOrStart();
 		}
 		catch (Exception ex){
 			Log.d(TAG,"Cannot start game manager", ex);
@@ -225,7 +223,6 @@ public class MainActivity extends Activity {
 		{
 			Log.d("MainActivity","Pause game");
 			_isPaused = true;
-			_manager.pause();
 		}
 
 		@Override
