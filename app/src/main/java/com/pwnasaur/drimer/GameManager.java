@@ -84,19 +84,18 @@ public class GameManager
 
 	private void notifyFinish()
 	{
-		Log.d(TAG,"Finish!");
+		Helpers.DebugLog(TAG,"Finish!");
 		this._listener.onFinish(this);
 	}
 
 	private void notifyTick()
 	{
-		Log.d(TAG,"Tick: " + this._currentTick);
 		this._listener.onTick(this._currentTick,this._currentDrink, this);
 	}
 
 	private void notifyDrink()
 	{
-		Log.d(TAG,"Drink: " + this._currentDrink);
+		Helpers.DebugLog(TAG,"Drink: " + this._currentDrink);
 		this._listener.onDrink(this._currentDrink, this);
 	}
 

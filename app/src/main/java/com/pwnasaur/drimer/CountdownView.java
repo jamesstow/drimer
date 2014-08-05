@@ -35,11 +35,7 @@ public class CountdownView extends View
 	private static final float SLIVER_SIZE = 0.01f;
 
 	// Defaults
-	private static final int DEFAULT_RING_ELAPSED_COLOUR = 0xFFFF0000;
-	private static final int DEFAULT_RING_INACTIVE_COLOUR = 0xFF222222;
-	private static final int DEFAULT_RING_TEXT_COLOUR = DEFAULT_RING_INACTIVE_COLOUR;
 	private static final int PAUSED_BLINK_RATE_MILLIS = 1000;
-
 	private static final float DEFAULT_RING_STARTING_ANGLE = 270f; // 0 is at the bottom
 	private static final boolean DEFAULT_DIRECTION_CLOCKWISE = true;
 	private static final float RING_THICKNESS_TO_RADIUS_RATIO = 0.02f; // how thick the ring will be in relation to the circle's radius
@@ -58,7 +54,6 @@ public class CountdownView extends View
 	private float _currentMarkerPosition = 0;
 	private GestureDetector _gestureDetector;
 	private CountdownStatus _status;
-	private TextView _tv = new TextView(this.getContext());
 
 	private List<OnClickListener> _ringClickListener = new ArrayList<OnClickListener>();
 
@@ -102,6 +97,7 @@ public class CountdownView extends View
 
 	}
 
+
 	private void syncUI()
 	{
 		invalidate();
@@ -141,15 +137,15 @@ public class CountdownView extends View
 		TypedArray a = context.getTheme().obtainStyledAttributes(attrs, R.styleable.CountdownView, 0, 0);
 		try
 		{
-			this._ringElapsedColour = a.getColor(R.styleable.CountdownView_ringElaspedColour, CountdownView.DEFAULT_RING_ELAPSED_COLOUR);
+			this._ringElapsedColour = a.getColor(R.styleable.CountdownView_ringElaspedColour, Settings.DEFAULT_RING_ELAPSED_COLOUR);
 			this._ringElapsedMarkerColour = a.getColor(R.styleable.CountdownView_ringElaspedMarkerColour, this._ringElapsedColour);
-			this._ringInactiveColour = a.getColor(R.styleable.CountdownView_ringInactiveColour, CountdownView.DEFAULT_RING_INACTIVE_COLOUR);
-			this._ringTextColour = a.getColor(R.styleable.CountdownView_ringTextColour, CountdownView.DEFAULT_RING_TEXT_COLOUR);
+			this._ringInactiveColour = a.getColor(R.styleable.CountdownView_ringInactiveColour, Settings.DEFAULT_RING_INACTIVE_COLOUR);
+			this._ringTextColour = a.getColor(R.styleable.CountdownView_ringTextColour, Settings.DEFAULT_VIEW_TEXT_COLOUR);
 			this._ringStartingAngle = a.getFloat(R.styleable.CountdownView_startingAngle, CountdownView.DEFAULT_RING_STARTING_ANGLE);
 			this._rotateClockwise = a.getBoolean(R.styleable.CountdownView_countdownClockwise, CountdownView.DEFAULT_DIRECTION_CLOCKWISE);
 		} catch (Exception e)
 		{
-			Log.e(CountdownView.LOG_TAG, "Error setting config", e);
+			Helpers.DebugLog(CountdownView.LOG_TAG, "Error setting config", e);
 		} finally
 		{
 			a.recycle();
@@ -297,7 +293,7 @@ public class CountdownView extends View
 				this._drawText = true;
 			}
 
-			text = String.format("%.2f", this._status.timeToNextDrink / 1000f);
+			text = String.format("%.2f", (this._status.timeToNextDrink / 1000f) + 0.01f);
 		}
 		else{
 			this._drawText = true;
