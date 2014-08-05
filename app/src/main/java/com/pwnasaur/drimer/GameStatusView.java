@@ -35,7 +35,7 @@ public class GameStatusView extends View
 	private Rect _textRectangle;
 	private boolean _sizesEstablished;
 	private GestureDetector _gestureDetector;
-	private CountdownStatus _status;
+	private int _drink, _total;
 	private TextView _tv = new TextView(this.getContext());
 
 	private void init()
@@ -81,11 +81,10 @@ public class GameStatusView extends View
 		this.init();
 	}
 
-	public void updateUIWithStatus(CountdownStatus status)
+	public void updateUIWithStatus(int drink, int total)
 	{
-		this._status = status;
-
-		// TODO
+		this._drink = drink;
+		this._total = total;
 
 		this.syncUI();
 	}
@@ -156,8 +155,8 @@ public class GameStatusView extends View
 		//canvas.drawRect(this._textRectangle,this._textPaint);
 		//canvas.drawCircle(cX,cY,10f, this._textPaint);
 
-		String current = this._status == null ? " - " : Integer.toString(this._status.currentDrink);
-		String total = this._status == null ? " - " : Integer.toString(this._status.totalDrinks);
+		String current = Integer.toString(this._drink);
+		String total = Integer.toString(this._total);
 		String text = current + " / " + total;
 
 		float textWidth = this._textPaint.measureText(text);

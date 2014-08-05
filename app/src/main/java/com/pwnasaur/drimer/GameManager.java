@@ -23,8 +23,10 @@ public class GameManager
 	private int _tickUpdateRate;
 	private boolean _isPaused = false;
 	private boolean _isRunning = false;
-	private Runnable _stopwatchRunnable;
-	private Handler _stopwatchHandler = new Handler();
+	private Runnable _stopwatchRunnable, _finishRunnable, _tickRunnable, _drinkRunnable;
+	private Handler _stopwatchHandler = new Handler(), _gameHandler= new Handler();
+
+	private final GameManager _thisRef = this;
 
 	public GameManager()
 	{
@@ -34,6 +36,32 @@ public class GameManager
 	public GameManager(int tickUpdateRate)
 	{
 		this._tickUpdateRate = tickUpdateRate;
+		GameManager thisRef = this;
+		this._finishRunnable = new Runnable()
+		{
+			@Override
+			public void run() {
+				Helpers.DebugLog(TAG, "Finish!");
+				_listener.onFinish(_thisRef);
+			}
+		};
+
+		this._tickRunnable = new Runnable()
+		{
+			@Override
+			public void run() {
+				_listener.onTick(_currentTick, _thisRef);
+			}
+		};
+
+		this._drinkRunnable = new Runnable()
+		{
+			@Override
+			public void run() {
+				Helpers.DebugLog(TAG, "Drink: " + _currentDrink);
+				_listener.onDrink(_currentDrink, _thisRef);
+			}
+		};
 	}
 
 	private void checkListener() throws Exception{
@@ -62,9 +90,9 @@ public class GameManager
 				int drink = (int)(_currentTick / _currentConfig.millisecondsBetweenDrinks); // TODO: write a better way of getting the drink out. so its RELIABLE.
 				if (drink != _currentDrink)
 				{
-					if (drink != _currentConfig.totalNumberOfDrinks)
+					_currentDrink = drink;
+					if (_currentDrink != _currentConfig.totalNumberOfDrinks)
 					{
-						_currentDrink = drink;
 						notifyDrink();
 					}
 					else
@@ -84,19 +112,22 @@ public class GameManager
 
 	private void notifyFinish()
 	{
-		Helpers.DebugLog(TAG,"Finish!");
-		this._listener.onFinish(this);
+		//_gameHandler.postDelayed(_finishRunnable,0);
+		Helpers.DebugLog(TAG, "Finish!");
+		_listener.onFinish(_thisRef);
 	}
 
 	private void notifyTick()
 	{
-		this._listener.onTick(this._currentTick, this);
+		//_gameHandler.postDelayed(_tickRunnable, 0);
+		_listener.onTick(_currentTick, _thisRef);
 	}
 
 	private void notifyDrink()
 	{
-		Helpers.DebugLog(TAG,"Drink: " + this._currentDrink);
-		this._listener.onDrink(this._currentDrink, this);
+		//_gameHandler.postDelayed(_drinkRunnable, 0);
+		Helpers.DebugLog(TAG, "Drink: " + _currentDrink);
+		_listener.onDrink(_currentDrink, _thisRef);
 	}
 
 	public void setListener(IGameHandler listener)	{ this._listener = listener; }

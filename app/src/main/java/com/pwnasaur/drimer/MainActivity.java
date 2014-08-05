@@ -45,6 +45,8 @@ public class MainActivity extends Activity {
 	private IConfigSource _configSource;
 	private CountdownStatus _status;
 	private GameStatusView _gameStatusView;
+	private android.os.Vibrator _vibrator;
+	private long[] _vibrationPattern;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +62,12 @@ public class MainActivity extends Activity {
     }
 
     private void initialise(){
+	    _vibrationPattern = new long[7];
+	    for(int i = 1; i < _vibrationPattern.length; ++i){
+		    _vibrationPattern[i] = 300;
+	    }
+
+	    this._vibrator = (android.os.Vibrator)getSystemService(Context.VIBRATOR_SERVICE);
 	    this._configSource = new MockConfigSource();
 	    this._manager = new GameManager();
 	    this._manager.setListener(this._gameHandler);
@@ -91,14 +99,16 @@ public class MainActivity extends Activity {
 	        public void run()
 	        {
 		        _repeatPlayer.start();
-		        Toast.makeText(baseContext,"Drink!",Toast.LENGTH_SHORT).show();
+
+		        _vibrator.vibrate(_vibrationPattern,-1);
+		        Toast.makeText(baseContext, R.string.peter_drinklage, Toast.LENGTH_SHORT).show();
 	        }
         };
 
         this._statusRunnable = new Runnable() {
 	        public void run()
 	        {
-		        _gameStatusView.updateUIWithStatus(_status);
+		        _gameStatusView.updateUIWithStatus(_currentDrink, _config.totalNumberOfDrinks);
 	        }
         };
 
@@ -210,7 +220,7 @@ public class MainActivity extends Activity {
 		@Override
 		public void onDrink(int drink, GameManager manager)
 		{
-			Helpers.DebugLog("MainActivity", "Drink - " + drink);
+			Helpers.DebugLog(TAG, "Drink - " + drink);
 			_currentDrink = drink;
 			_updateHandler.postDelayed(_repeatPlayerRunnable,0);
 			_updateHandler.postDelayed(_statusRunnable, 0);
@@ -228,28 +238,28 @@ public class MainActivity extends Activity {
 		public void onFinish(GameManager manager)
 		{
 			_updateHandler.postDelayed(_statusRunnable, 0);
-			Helpers.DebugLog("MainActivity", "Finish game");
+			Helpers.DebugLog(TAG, "Finish game");
 			_finalPlayer.start();
 		}
 
 		@Override
 		public void onPause(GameManager manager)
 		{
-			Helpers.DebugLog("MainActivity", "Pause game");
+			Helpers.DebugLog(TAG, "Pause game");
 			_isPaused = true;
 		}
 
 		@Override
 		public void onStart(GameManager manager)
 		{
-			Helpers.DebugLog("MainActivity", "Start game");
+			Helpers.DebugLog(TAG, "Start game");
 			_isPaused = false;
 		}
 
 		@Override
 		public void onStop(GameManager manager)
 		{
-			Helpers.DebugLog("MainActivity", "Stop game");
+			Helpers.DebugLog(TAG, "Stop game");
 		}
 	};
 }
