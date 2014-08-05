@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
 	private MediaPlayer _repeatPlayer;
 	private MediaPlayer _finalPlayer;
 	private Handler _updateHandler = new Handler();
-	private Runnable _updateRunnable;
+	private Runnable _updateRunnable, _repeatPlayerRunnable;
 	private GameManager _manager;
 	private GameConfig _config;
 	private long _currentTick;
@@ -72,19 +72,27 @@ public class MainActivity extends Activity {
 		    }
 	    });
 
+
 		this._updateHandler = new Handler(Looper.getMainLooper());
 		this._updateRunnable = new Runnable() {
 				public void run()
 				{
 					long ticksToCurrentDrink = _currentDrink * _config.millisecondsBetweenDrinks;
 					long ticksToCurrentTime = _currentTick - ticksToCurrentDrink;
-					long ticksToNextDrink = ticksToCurrentDrink + _config.millisecondsBetweenDrinks;
 					long tickDiff = _config.millisecondsBetweenDrinks - ticksToCurrentTime;
 
 					_status = new CountdownStatus(tickDiff, _config.millisecondsBetweenDrinks, _config.totalNumberOfDrinks, _currentDrink, _isPaused);
 					_countdownView.updateUIWithStatus(_status);
 				}
 	    };
+
+        this._repeatPlayerRunnable = new Runnable() {
+	        public void run()
+	        {
+		        _repeatPlayer.start();
+		        Toast.makeText(baseContext,"Drink!",Toast.LENGTH_SHORT).show();
+	        }
+        };
 
 		this.changeConfig(this._configSource.getCurrent());
     }
@@ -144,11 +152,6 @@ public class MainActivity extends Activity {
 		this._manager.changeGameConfig(config);
 	}
 
-	private void playSound(MediaPlayer player)
-	{
-		 //player.start();
-	}
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -179,7 +182,7 @@ public class MainActivity extends Activity {
 			this._manager.pauseOrStart();
 		}
 		catch (Exception ex){
-			Log.d(TAG,"Cannot start game manager", ex);
+			Helpers.DebugLog(TAG, "Cannot start game manager", ex);
 		}
 	}
 
@@ -196,10 +199,9 @@ public class MainActivity extends Activity {
 		@Override
 		public void onDrink(int drink, GameManager manager)
 		{
-			Log.d("MainActivity","Drink - " + drink);
+			Helpers.DebugLog("MainActivity", "Drink - " + drink);
 			_currentDrink = drink;
-			playSound(_repeatPlayer);
-			Toast.makeText(getContext(),"Drink!",Toast.LENGTH_SHORT).show();
+			_updateHandler.postDelayed(_repeatPlayerRunnable,0);
 		}
 
 		@Override
@@ -214,28 +216,28 @@ public class MainActivity extends Activity {
 		@Override
 		public void onFinish(GameManager manager)
 		{
-			Log.d("MainActivity","Finish game");
-			playSound(_finalPlayer);
+			Helpers.DebugLog("MainActivity", "Finish game");
+			_finalPlayer.start();
 		}
 
 		@Override
 		public void onPause(GameManager manager)
 		{
-			Log.d("MainActivity","Pause game");
+			Helpers.DebugLog("MainActivity", "Pause game");
 			_isPaused = true;
 		}
 
 		@Override
 		public void onStart(GameManager manager)
 		{
-			Log.d("MainActivity","Start game");
+			Helpers.DebugLog("MainActivity", "Start game");
 			_isPaused = false;
 		}
 
 		@Override
 		public void onStop(GameManager manager)
 		{
-			Log.d("MainActivity","Stop game");
+			Helpers.DebugLog("MainActivity", "Stop game");
 		}
 	};
 }
