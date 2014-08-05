@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
 	private MediaPlayer _repeatPlayer;
 	private MediaPlayer _finalPlayer;
 	private Handler _updateHandler = new Handler();
-	private Runnable _updateRunnable, _repeatPlayerRunnable;
+	private Runnable _updateRunnable, _repeatPlayerRunnable, _statusRunnable;
 	private GameManager _manager;
 	private GameConfig _config;
 	private long _currentTick;
@@ -44,6 +44,7 @@ public class MainActivity extends Activity {
 	private  boolean _isPaused;
 	private IConfigSource _configSource;
 	private CountdownStatus _status;
+	private GameStatusView _gameStatusView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,7 +72,7 @@ public class MainActivity extends Activity {
 				pauseOrStart();
 		    }
 	    });
-
+	    this._gameStatusView = (GameStatusView)findViewById(R.id.status);
 
 		this._updateHandler = new Handler(Looper.getMainLooper());
 		this._updateRunnable = new Runnable() {
@@ -91,6 +92,13 @@ public class MainActivity extends Activity {
 	        {
 		        _repeatPlayer.start();
 		        Toast.makeText(baseContext,"Drink!",Toast.LENGTH_SHORT).show();
+	        }
+        };
+
+        this._statusRunnable = new Runnable() {
+	        public void run()
+	        {
+		        _gameStatusView.updateUIWithStatus(_status);
 	        }
         };
 
@@ -150,6 +158,9 @@ public class MainActivity extends Activity {
 		this._config = config;
 		this.intialiseSound();
 		this._manager.changeGameConfig(config);
+
+		this._status = new CountdownStatus(0, _config.millisecondsBetweenDrinks, _config.totalNumberOfDrinks, _currentDrink, _isPaused);
+		this._updateHandler.postDelayed(this._statusRunnable,0);
 	}
 
     @Override
@@ -202,12 +213,12 @@ public class MainActivity extends Activity {
 			Helpers.DebugLog("MainActivity", "Drink - " + drink);
 			_currentDrink = drink;
 			_updateHandler.postDelayed(_repeatPlayerRunnable,0);
+			_updateHandler.postDelayed(_statusRunnable, 0);
 		}
 
 		@Override
-		public void onTick(long tick,int drinks, GameManager manager)
+		public void onTick(long tick, GameManager manager)
 		{
-			_currentDrink = drinks;
 			_currentTick = tick;
 
 			_updateHandler.postDelayed(_updateRunnable, 0);
@@ -216,6 +227,7 @@ public class MainActivity extends Activity {
 		@Override
 		public void onFinish(GameManager manager)
 		{
+			_updateHandler.postDelayed(_statusRunnable, 0);
 			Helpers.DebugLog("MainActivity", "Finish game");
 			_finalPlayer.start();
 		}

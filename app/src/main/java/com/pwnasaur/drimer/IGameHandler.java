@@ -5,7 +5,7 @@ package com.pwnasaur.drimer;
  */
 public interface IGameHandler
 {
-	void onTick(long currentTick, int drinks, GameManager manager);
+	void onTick(long currentTick, GameManager manager);
 	void onDrink(int drink, GameManager manager);
 	void onFinish(GameManager manager);
 	void onPause(GameManager manager);

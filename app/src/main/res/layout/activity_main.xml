@@ -1,27 +1,36 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/container"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
     tools:context="com.pwnasaur.drimer.MainActivity"
-    tools:ignore="MergeRootFrame" >
+    tools:ignore="MergeRootFrame"
+    android:padding="10px"
+    >
 
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10pt"
-        android:layout_marginLeft="30pt"
-        android:layout_marginRight="30pt"
-
+        android:layout_width="match_parent"
+        android:layout_height="349dp"
+        android:layout_margin="10pt"
+        android:id="@+id/countdownContainer"
         android:orientation="vertical">
         <com.pwnasaur.drimer.CountdownView
             android:layout_width="fill_parent"
-            android:layout_height="0dp"
+            android:layout_height="wrap_content"
             android:id="@+id/countdown"
-            android:paddingLeft="10px"
-            android:paddingTop="20px"
-            android:paddingRight="30px"
-            android:paddingBottom="40px"
-            android:layout_weight="1"/>
+            android:padding="20px"
+            />
     </LinearLayout>
-</FrameLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/countdownContainer"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true">
+        <com.pwnasaur.drimer.GameStatusView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/status"
+            android:padding="20px"/>
+    </LinearLayout>
+</RelativeLayout>

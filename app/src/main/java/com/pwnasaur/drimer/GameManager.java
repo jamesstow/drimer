@@ -59,12 +59,12 @@ public class GameManager
 					notifyTick();
 				}
 
-				int estimatedDrink = (int)(_currentTick / (int)_currentConfig.millisecondsBetweenDrinks);
-				if (estimatedDrink != _currentDrink)
+				int drink = (int)(_currentTick / _currentConfig.millisecondsBetweenDrinks); // TODO: write a better way of getting the drink out. so its RELIABLE.
+				if (drink != _currentDrink)
 				{
-					if (estimatedDrink != _currentConfig.totalNumberOfDrinks)
+					if (drink != _currentConfig.totalNumberOfDrinks)
 					{
-						_currentDrink = estimatedDrink;
+						_currentDrink = drink;
 						notifyDrink();
 					}
 					else
@@ -90,7 +90,7 @@ public class GameManager
 
 	private void notifyTick()
 	{
-		this._listener.onTick(this._currentTick,this._currentDrink, this);
+		this._listener.onTick(this._currentTick, this);
 	}
 
 	private void notifyDrink()
