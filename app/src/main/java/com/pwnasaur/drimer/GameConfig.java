@@ -17,7 +17,7 @@ public class GameConfig  {
 
 	    this.name = "Centurion";
         this.totalNumberOfDrinks = 100;
-        this.millisecondsBetweenDrinks = 10 * 1000;
+        this.millisecondsBetweenDrinks = 60 * 1000;
         this.repeatSoundUri = Uri.parse(repeat_sound);
         this.finalSoundUri = Uri.parse(final_sound);
     }
